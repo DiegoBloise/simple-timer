@@ -1,497 +1,515 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8" />
-	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-	<title>Simple Timer</title>
-	<link rel="preconnect" href="https://fonts.googleapis.com">
-	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Electrolize&display=swap" rel="stylesheet">
-	<style>
-	  html, body {
-			margin: 0;
-			padding: 0;
-
-			height: 100%;
-			width: 100%;
-
-			display: flex;
-			align-items: center;
-			justify-content: center;
-
-			background-color: black;
-			color: white;
-
-			font-family: "Electrolize", sans-serif;
-
-			font-weight: bold;
-  		font-style: normal;
-		}
-
-		#finish-text {
-			font-size: 5rem;
-			text-align: center;
-		}
-
-		.container {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			gap: 0.5rem;
-		}
-
-		.input-container {
-			display: flex;
-			flex-direction: row;
-		}
-
-		.buttons-container {
-			display: flex;
-			flex-direction: row;
-			gap: 0.5rem;
-		}
-
-		span {
-			font-size: 4rem;
-		}
-
-		input, button {
-			font-family: "Electrolize", sans-serif;
-			font-weight: bold;
-  		font-style: normal;
-			font-size: 1rem;
-		}
-
-		/* Chrome, Safari, Edge, Opera */
-		input::-webkit-outer-spin-button,
-		input::-webkit-inner-spin-button {
-			-webkit-appearance: none;
-			margin: 0;
-		}
-
-		/* Firefox */
-		input[type="number"] {
-			-moz-appearance: textfield;
-		}
-
-		input {
-			border: none;
-			background: transparent;
-			text-align: center;
-			font-size: 4rem;
-			width: 7.1rem;
-			padding: 0;
-			color: white;
-			outline: none;
-		}
-
-		button {
-			border: 1px solid white;
-			cursor: pointer;
-			padding: .5rem;
-			background-color: transparent;
-			color: white;
-		}
-
-		button:hover {
-			background-color: white;
-			color: black;
-		}
-
-		button:disabled {
-			border: 1px solid rgb(56, 56, 56);
-			color: rgb(56, 56, 56);
-			background-color: transparent;
-			cursor: not-allowed;
-		}
-
-		button:disabled:hover {
-			background-color: transparent;
-			color: rgb(56, 56, 56);
-		}
-
-		#reset-overlay {
-			position: absolute;
-			z-index: 5;
-			cursor: pointer;
-			width: 100%;
-			height: 100%;
-		}
-
-		.blink {
-			animation: piscar 1s steps(1) infinite;
-		}
-
-		@keyframes piscar {
-			0% {
-				background-color: white;
-				color: black;
-			}
-			50% {
-				background-color: black;
-				color: white;
-			}
-			100% {
-				background-color: white;
-				color: black;
-			}
-		}
-
-		.final-countdown {
-			scale: 300%;
-			text-align: center;
-		}
-	</style>
-</head>
-<body>
-	<div id="reset-overlay" hidden onclick="reset()"></div>
-	<h1 id="finish-text" hidden>Tempo Esgotado!</h1>
-	<div class="container">
-		<div class="input-container">
-			<input id="horas" type="number" max="60" min="0" step="1"/><span>:</span>
-			<input id="minutos" type="number" max="60" min="0" step="1"/><span>:</span>
-			<input id="segundos" type="number" max="60" min="0" step="1" />
-		</div>
-		<div class="buttons-container">
-			<button id="edit" type="button" onclick="edit()">editar</button>
-			<button id="reset" type="button" onclick="reset()">reset</button>
-			<button id="pause" type="button" onclick="pause()">pausar</button>
-			<button id="play" type="button" onclick="play()">iniciar</button>
-		</div>
-		<button id="fullscreen" hidden type="button" onclick="toggleFullscreen()">tela cheia</button>
-		<div>
-			<button id="cancel" hidden type="button" onclick="cancel()">cancelar</button>
-			<button id="save"  hidden type="button" onclick="save()">salvar</button>
-		</div>
-	</div>
-</body>
-<script>
-	let horasInput = document.getElementById("horas");
-	let minutosInput = document.getElementById("minutos");
-	let segundosInput = document.getElementById("segundos");
-
-	let horas;
-	let minutos;
-	let segundos;
-
-	let fsBtn = document.getElementById("fullscreen");
-
-	let editBtn = document.getElementById("edit");
-	let pauseBtn = document.getElementById("pause");
-	let playBtn = document.getElementById("play");
-	let resetBtn = document.getElementById("reset");
-
-	let cancelBtn = document.getElementById("cancel");
-	let saveBtn = document.getElementById("save");
-
-	let dots = document.getElementsByTagName("span");
-
-	let resetOverlay = document.getElementById("reset-overlay");
-
-	let finishText = document.getElementById("finish-text");
-
-	let body = document.getElementsByTagName("body");
-
-	let timer;
-
-	reset();
-
-	document.addEventListener("keydown", function(event) {
-		if (event.key === "Enter" && !playBtn.disabled) {
-			play();
-		}
-	});
-
-	horasInput.addEventListener("change", inputChange);
-	minutosInput.addEventListener("change", inputChange);
-	segundosInput.addEventListener("change", inputChange);
-
-	function inputChange() {
-		let h = Math.max(0, Number(horasInput.value));
-		let m = Math.max(0, Number(minutosInput.value));
-		let s = Math.max(0, Number(segundosInput.value));
-
-		if (s >= 60) {
-			s = 0;
-			m += 1;
-		} else if (s < 0) {
-			s = 59;
-			m = Math.max(0, m - 1);
-		}
-
-		if (m >= 60) {
-			m = 0;
-			h += 1;
-		} else if (m < 0) {
-			m = 59;
-			h = Math.max(0, h - 1);
-		}
-
-		horasInput.value = formatTwoDigits(h);
-		minutosInput.value = formatTwoDigits(m);
-		segundosInput.value = formatTwoDigits(s);
-
-		checkValues();
-	}
-
-	function addWheelListeners() {
-		horasInput.addEventListener("wheel", onWheel);
-		minutosInput.addEventListener("wheel", onWheel);
-		segundosInput.addEventListener("wheel", onWheel);
-	}
-
-	function removeWheelListeners() {
-		horasInput.removeEventListener("wheel", onWheel);
-		minutosInput.removeEventListener("wheel", onWheel);
-		segundosInput.removeEventListener("wheel", onWheel);
-	}
-
-	function onWheel(event) {
-		event.preventDefault();
-		const input = event.target;
-		const delta = Math.sign(event.deltaY);
-
-		let h = Number(horasInput.value);
-		let m = Number(minutosInput.value);
-		let s = Number(segundosInput.value);
-
-		if (input === segundosInput) {
-			s -= delta;
-		} else if (input === minutosInput) {
-			m -= delta;
-		} else if (input === horasInput) {
-			h -= delta;
-		}
-
-		// Normaliza valores
-		if (s >= 60) {
-			s = 0;
-			m += 1;
-		} else if (s < 0) {
-			if (m > 0 || h > 0) {
-				s = 59;
-				if (m > 0) {
-					m -= 1;
-				} else if (h > 0) {
-					h -= 1;
-					m = 59;
-				}
-			} else {
-				s = 0;
-			}
-		}
-
-		if (m >= 60) {
-			m = 0;
-			h += 1;
-		} else if (m < 0) {
-			if (h > 0) {
-				h -= 1;
-				m = 59;
-			} else {
-				m = 0;
-			}
-		}
-
-		// Maximo de horas = 60
-		h = Math.min(60, Math.max(0, h));
-		m = Math.max(0, m);
-		s = Math.max(0, s);
-
-		horasInput.value = formatTwoDigits(h);
-		minutosInput.value = formatTwoDigits(m);
-		segundosInput.value = formatTwoDigits(s);
-
-		checkValues();
-	}
-
-	function checkValues() {
-		if (Number(horasInput.value) > 0 || Number(minutosInput.value) > 0 || Number(segundosInput.value) > 0) {
-			playBtn.disabled = false;
-		} else {
-			playBtn.disabled = true;
-			pauseBtn.disabled = true;
-		}
-	}
-
-	function play() {
-		playBtn.disabled = true;
-		pauseBtn.disabled = false;
-		editBtn.disabled = true;
-
-		timer = setInterval(timerLogic, 1000);
-	}
-
-	function pause() {
-		playBtn.disabled = false;
-		pauseBtn.disabled = true;
-		editBtn.disabled = false;
-
-		clearInterval(timer);
-	}
-
-	function finish() {
-		playBtn.disabled = true;
-		pauseBtn.disabled = true;
-		editBtn.disabled = false;
-
-		resetOverlay.hidden = false;
-
-		body[0].classList.add("blink");
-		segundosInput.classList.add("final-countdown");
-
-		segundosInput.hidden = true;
-		finishText.hidden = false;
-
-		clearInterval(timer);
-	}
-
-	function edit() {
-		addWheelListeners();
-
-		horas = Number(horasInput.value);
-		minutos = Number(minutosInput.value);
-		segundos = Number(segundosInput.value);
-
-		horasInput.disabled = false;
-		minutosInput.disabled = false;
-		segundosInput.disabled = false;
-
-		fsBtn.hidden = true;
-		editBtn.hidden = true;
-		pauseBtn.hidden = true;
-	 	playBtn.hidden = true;
-		resetBtn.hidden = true;
-
-		cancelBtn.hidden = false;
-		saveBtn.hidden = false;
-	}
-
-	function cancel() {
-		removeWheelListeners();
-
-		horasInput.value = formatTwoDigits(horas);
-		minutosInput.value = formatTwoDigits(minutos);
-		segundosInput.value = formatTwoDigits(segundos);
-
-		fsBtn.hidden = false;
-		editBtn.hidden = false;
-		pauseBtn.hidden = false;
-	 	playBtn.hidden = false;
-		resetBtn.hidden = false;
-
-		cancelBtn.hidden = true;
-		saveBtn.hidden = true;
-
-		horasInput.disabled = true;
-		minutosInput.disabled = true;
-		segundosInput.disabled = true;
-	}
-
-	function save() {
-		removeWheelListeners();
-
-		fsBtn.hidden = false;
-		editBtn.hidden = false;
-		pauseBtn.hidden = false;
-	 	playBtn.hidden = false;
-		resetBtn.hidden = false;
-
-		cancelBtn.hidden = true;
-		saveBtn.hidden = true;
-
-		horasInput.disabled = true;
-		minutosInput.disabled = true;
-		segundosInput.disabled = true;
-	}
-
-	function reset() {
-		horasInput.value = formatTwoDigits(0);
-		minutosInput.value = formatTwoDigits(0);
-		segundosInput.value = formatTwoDigits(0);
-
-		horasInput.disabled = true;
-		minutosInput.disabled = true;
-		segundosInput.disabled = true;
-
-		editBtn.disabled = false;
-
-		resetOverlay.hidden = true;
-
-		horasInput.hidden = false;
-		minutosInput.hidden = false;
-		segundosInput.hidden = false;
-
-		dots[0].hidden = false;
-		dots[1].hidden = false;
-
-		fsBtn.hidden = false;
-		editBtn.hidden = false;
-		pauseBtn.hidden = false;
-	 	playBtn.hidden = false;
-		resetBtn.hidden = false;
-
-		body[0].classList.remove("blink");
-		segundosInput.classList.remove("blink");
-		segundosInput.classList.remove("final-countdown");
-
-		finishText.hidden = true;
-
-		checkValues();
-		clearInterval(timer);
-	}
-
-	function timerLogic() {
-		if(Number(segundosInput.value) > 0) {
-			segundosInput.value = formatTwoDigits(Number(segundosInput.value) - 1);
-			if(Number(segundosInput.value) <= 10) {
-				finalCountDown();
-			}
-			return;
-		}
-
-		if (Number(minutosInput.value) > 0) {
-			if (Number(minutosInput.value) < 59) {
-				minutosInput.value = formatTwoDigits(Number(minutosInput.value) - 1);
-			}
-			segundosInput.value = 59
-			return;
-		}
-
-		if (Number(horasInput.value) > 0) {
-			horasInput.value = formatTwoDigits(Number(horasInput.value) - 1);
-			minutosInput.value = 59;
-			segundosInput.value = 59;
-			return;
-		}
-
-		finish();
-	}
-
-	function finalCountDown() {
-		horasInput.hidden = true;
-		minutosInput.hidden = true;
-
-		segundosInput.classList.add("final-countdown");
-
-		dots[0].hidden = true;
-		dots[1].hidden = true;
-
-		fsBtn.hidden = true;
-		editBtn.hidden = true;
-		pauseBtn.hidden = true;
-	 	playBtn.hidden = true;
-		resetBtn.hidden = true;
-	}
-
-	function formatTwoDigits(value) {
-		return value.toString().padStart(2, '0');
-	}
-
-	function toggleFullscreen() {
-		document.fullscreenElement
-			? document.exitFullscreen()
-			: document.documentElement.requestFullscreen();
-	}
-</script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Timer</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Electrolize&display=swap");
+
+      :root {
+        --white: #f0f0f0;
+        --black: #0a0a0a;
+        --disabled: #2e2e2e;
+      }
+
+      * {
+        font-family: "Electrolize", sans-serif;
+        font-weight: bold;
+        font-style: normal;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+
+        height: 100%;
+        width: 100%;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+
+        background-color: var(--black);
+        color: var(--white);
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+      }
+
+      .input-container {
+        display: flex;
+        flex-direction: row;
+      }
+
+      .buttons-container {
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+      }
+
+      .button-type-container {
+        display: flex;
+        gap: 0.2rem;
+      }
+
+      span {
+        font-size: 4rem;
+      }
+
+      input,
+      button {
+        font-size: 1rem;
+        width: 6rem;
+      }
+
+      /* Chrome, Safari, Edge, Opera */
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      /* Firefox */
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+
+      input {
+        border: none;
+        background: transparent;
+        text-align: center;
+        font-size: 4rem;
+        width: 7.1rem;
+        padding: 0;
+        color: var(--white);
+        outline: none;
+      }
+
+      button {
+        border: 1px solid var(--white);
+        cursor: pointer;
+        padding: 0.5rem;
+        background-color: transparent;
+        color: var(--white);
+      }
+
+      button:hover {
+        background-color: var(--white);
+        color: var(--black);
+      }
+
+      button:disabled {
+        border: 1px solid var(--disabled);
+        color: var(--disabled);
+        background-color: transparent;
+        cursor: not-allowed;
+      }
+
+      button:disabled:hover {
+        background-color: transparent;
+        color: var(--disabled);
+      }
+
+      #timeout-text {
+        font-size: 5rem;
+        text-align: center;
+      }
+
+      #reset-overlay {
+        position: absolute;
+        z-index: 5;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+      }
+
+      .final-countdown {
+        scale: 300%;
+        text-align: center;
+      }
+
+      .blink {
+        animation: blink 1s steps(1) infinite;
+      }
+
+      @keyframes blink {
+        0%,
+        100% {
+          background-color: var(--white);
+          color: var(--black);
+        }
+        50% {
+          background-color: var(--black);
+          color: var(--white);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="reset-overlay" hidden onclick="reset()"></div>
+
+    <h1 id="timeout-text" hidden>Tempo Esgotado!</h1>
+
+    <div class="container">
+      <div class="input-container">
+        <input id="horas" type="number" max="60" min="0" step="1" /><span>:</span>
+        <input id="minutos" type="number" max="60" min="0" step="1" /><span>:</span>
+        <input id="segundos" type="number" max="60" min="0" step="1" />
+      </div>
+
+      <div class="buttons-container">
+        <div class="button-type-container">
+          <button id="edit" type="button" onclick="edit()">editar</button>
+          <button id="reset" type="button" onclick="reset()">reset</button>
+        </div>
+        <div class="button-type-container">
+          <button id="pause" type="button" onclick="pause()">pausar</button>
+          <button id="play" type="button" onclick="play()">iniciar</button>
+        </div>
+      </div>
+
+      <button id="fullscreen" hidden type="button" onclick="toggleFullscreen()">tela cheia</button>
+
+      <div>
+        <button id="cancel" hidden type="button" onclick="cancel()">cancelar</button>
+        <button id="save" hidden type="button" onclick="save()">salvar</button>
+      </div>
+    </div>
+  </body>
+  <script>
+    let horasInput = document.getElementById("horas");
+    let minutosInput = document.getElementById("minutos");
+    let segundosInput = document.getElementById("segundos");
+
+    let horas;
+    let minutos;
+    let segundos;
+
+    let fsBtn = document.getElementById("fullscreen");
+
+    let editBtn = document.getElementById("edit");
+    let pauseBtn = document.getElementById("pause");
+    let playBtn = document.getElementById("play");
+    let resetBtn = document.getElementById("reset");
+
+    let cancelBtn = document.getElementById("cancel");
+    let saveBtn = document.getElementById("save");
+
+    let dots = document.getElementsByTagName("span");
+
+    let resetOverlay = document.getElementById("reset-overlay");
+
+    let timeoutText = document.getElementById("timeout-text");
+
+    let body = document.getElementsByTagName("body")[0];
+
+    let timer;
+
+    reset();
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" && !playBtn.disabled) {
+        play();
+      }
+    });
+
+    horasInput.addEventListener("change", inputChange);
+    minutosInput.addEventListener("change", inputChange);
+    segundosInput.addEventListener("change", inputChange);
+
+    function inputChange() {
+      let h = Math.max(0, Number(horasInput.value));
+      let m = Math.max(0, Number(minutosInput.value));
+      let s = Math.max(0, Number(segundosInput.value));
+
+      if (s >= 60) {
+        s = 0;
+        m += 1;
+      } else if (s < 0) {
+        s = 59;
+        m = Math.max(0, m - 1);
+      }
+
+      if (m >= 60) {
+        m = 0;
+        h += 1;
+      } else if (m < 0) {
+        m = 59;
+        h = Math.max(0, h - 1);
+      }
+
+      horasInput.value = formatTwoDigits(h);
+      minutosInput.value = formatTwoDigits(m);
+      segundosInput.value = formatTwoDigits(s);
+
+      checkValues();
+    }
+
+    function addWheelListeners() {
+      horasInput.addEventListener("wheel", onWheel);
+      minutosInput.addEventListener("wheel", onWheel);
+      segundosInput.addEventListener("wheel", onWheel);
+    }
+
+    function removeWheelListeners() {
+      horasInput.removeEventListener("wheel", onWheel);
+      minutosInput.removeEventListener("wheel", onWheel);
+      segundosInput.removeEventListener("wheel", onWheel);
+    }
+
+    function onWheel(event) {
+      event.preventDefault();
+      const input = event.target;
+      const delta = Math.sign(event.deltaY);
+
+      let h = Number(horasInput.value);
+      let m = Number(minutosInput.value);
+      let s = Number(segundosInput.value);
+
+      if (input === segundosInput) {
+        s -= delta;
+      } else if (input === minutosInput) {
+        m -= delta;
+      } else if (input === horasInput) {
+        h -= delta;
+      }
+
+      // Normaliza valores
+      if (s >= 60) {
+        s = 0;
+        m += 1;
+      } else if (s < 0) {
+        if (m > 0 || h > 0) {
+          s = 59;
+          if (m > 0) {
+            m -= 1;
+          } else if (h > 0) {
+            h -= 1;
+            m = 59;
+          }
+        } else {
+          s = 0;
+        }
+      }
+
+      if (m >= 60) {
+        m = 0;
+        h += 1;
+      } else if (m < 0) {
+        if (h > 0) {
+          h -= 1;
+          m = 59;
+        } else {
+          m = 0;
+        }
+      }
+
+      // Maximo de horas = 60
+      h = Math.min(60, Math.max(0, h));
+      m = Math.max(0, m);
+      s = Math.max(0, s);
+
+      horasInput.value = formatTwoDigits(h);
+      minutosInput.value = formatTwoDigits(m);
+      segundosInput.value = formatTwoDigits(s);
+
+      checkValues();
+    }
+
+    function checkValues() {
+      if (Number(horasInput.value) > 0 || Number(minutosInput.value) > 0 || Number(segundosInput.value) > 0) {
+        playBtn.disabled = false;
+      } else {
+        playBtn.disabled = true;
+        pauseBtn.disabled = true;
+      }
+    }
+
+    function play() {
+      playBtn.disabled = true;
+      pauseBtn.disabled = false;
+      editBtn.disabled = true;
+
+      timer = setInterval(timerLogic, 1000);
+    }
+
+    function pause() {
+      playBtn.disabled = false;
+      pauseBtn.disabled = true;
+      editBtn.disabled = false;
+
+      clearInterval(timer);
+    }
+
+    function timeout() {
+      playBtn.disabled = true;
+      pauseBtn.disabled = true;
+      editBtn.disabled = false;
+
+      resetOverlay.hidden = false;
+
+      body.classList.add("blink");
+      segundosInput.classList.add("final-countdown");
+
+      segundosInput.hidden = true;
+      timeoutText.hidden = false;
+
+      clearInterval(timer);
+    }
+
+    function edit() {
+      addWheelListeners();
+
+      horas = Number(horasInput.value);
+      minutos = Number(minutosInput.value);
+      segundos = Number(segundosInput.value);
+
+      horasInput.disabled = false;
+      minutosInput.disabled = false;
+      segundosInput.disabled = false;
+
+      fsBtn.hidden = true;
+      editBtn.hidden = true;
+      pauseBtn.hidden = true;
+      playBtn.hidden = true;
+      resetBtn.hidden = true;
+
+      cancelBtn.hidden = false;
+      saveBtn.hidden = false;
+    }
+
+    function cancel() {
+      removeWheelListeners();
+
+      horasInput.value = formatTwoDigits(horas);
+      minutosInput.value = formatTwoDigits(minutos);
+      segundosInput.value = formatTwoDigits(segundos);
+
+      fsBtn.hidden = false;
+      editBtn.hidden = false;
+      pauseBtn.hidden = false;
+      playBtn.hidden = false;
+      resetBtn.hidden = false;
+
+      cancelBtn.hidden = true;
+      saveBtn.hidden = true;
+
+      horasInput.disabled = true;
+      minutosInput.disabled = true;
+      segundosInput.disabled = true;
+    }
+
+    function save() {
+      removeWheelListeners();
+
+      fsBtn.hidden = false;
+      editBtn.hidden = false;
+      pauseBtn.hidden = false;
+      playBtn.hidden = false;
+      resetBtn.hidden = false;
+
+      cancelBtn.hidden = true;
+      saveBtn.hidden = true;
+
+      horasInput.disabled = true;
+      minutosInput.disabled = true;
+      segundosInput.disabled = true;
+    }
+
+    function reset() {
+      horasInput.value = formatTwoDigits(0);
+      minutosInput.value = formatTwoDigits(0);
+      segundosInput.value = formatTwoDigits(0);
+
+      horasInput.disabled = true;
+      minutosInput.disabled = true;
+      segundosInput.disabled = true;
+
+      editBtn.disabled = false;
+
+      resetOverlay.hidden = true;
+
+      horasInput.hidden = false;
+      minutosInput.hidden = false;
+      segundosInput.hidden = false;
+
+      dots[0].hidden = false;
+      dots[1].hidden = false;
+
+      fsBtn.hidden = false;
+      editBtn.hidden = false;
+      pauseBtn.hidden = false;
+      playBtn.hidden = false;
+      resetBtn.hidden = false;
+
+      body.classList.remove("blink");
+      segundosInput.classList.remove("blink");
+      segundosInput.classList.remove("final-countdown");
+
+      timeoutText.hidden = true;
+
+      checkValues();
+      clearInterval(timer);
+    }
+
+    function timerLogic() {
+      if (Number(segundosInput.value) <= 10 && Number(minutosInput.value) == 0 && Number(horasInput.value) == 0) {
+        finalCountDown();
+      }
+
+      if (Number(segundosInput.value) > 0) {
+        segundosInput.value = formatTwoDigits(Number(segundosInput.value) - 1);
+        return;
+      }
+
+      if (Number(minutosInput.value) > 0) {
+        if (Number(minutosInput.value) < 59) {
+          minutosInput.value = formatTwoDigits(Number(minutosInput.value) - 1);
+        }
+        segundosInput.value = 59;
+        return;
+      }
+
+      if (Number(horasInput.value) > 0) {
+        horasInput.value = formatTwoDigits(Number(horasInput.value) - 1);
+        minutosInput.value = 59;
+        segundosInput.value = 59;
+        return;
+      }
+
+      timeout();
+    }
+
+    function finalCountDown() {
+      horasInput.hidden = true;
+      minutosInput.hidden = true;
+
+      segundosInput.classList.add("final-countdown");
+
+      dots[0].hidden = true;
+      dots[1].hidden = true;
+
+      fsBtn.hidden = true;
+      editBtn.hidden = true;
+      pauseBtn.hidden = true;
+      playBtn.hidden = true;
+      resetBtn.hidden = true;
+    }
+
+    function formatTwoDigits(value) {
+      return value.toString().padStart(2, "0");
+    }
+
+    function toggleFullscreen() {
+      document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    }
+  </script>
 </html>
